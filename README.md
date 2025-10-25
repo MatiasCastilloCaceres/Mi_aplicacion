@@ -110,11 +110,6 @@ npm run lint       # Ejecuta linter
 - El email es accesible desde cualquier pantalla dentro de los tabs
 - Al cerrar sesión, se limpia el estado y regresa al login
 
-## ✨ Autor
 
-Desarrollo para evaluación académica - React Native con Expo
 
----
 
-**¡Gracias por revisar mi aplicación!** 🙏
-# Mi_aplicacion
