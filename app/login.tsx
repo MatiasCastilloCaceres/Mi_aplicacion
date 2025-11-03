@@ -1,15 +1,15 @@
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -22,6 +22,13 @@ export default function LoginScreen() {
     // Validación básica
     if (!email || !password) {
       setError('Por favor completa todos los campos');
+      return;
+    }
+
+    // Validar email
+    const validEmail = 'usuario@example.com';
+    if (email !== validEmail) {
+      setError('Email no válido');
       return;
     }
 
@@ -55,7 +62,6 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            editable={!error || error === 'Por favor completa todos los campos'}
           />
         </View>
 
@@ -68,11 +74,12 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
-            editable={!error || error === 'Por favor completa todos los campos'}
           />
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Iniciar sesión</Text>

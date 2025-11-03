@@ -31,16 +31,6 @@ Esta es una aplicación móvil desarrollada con **React Native** y **Expo** que 
   - Código tipado en archivos `.tsx`
   - Mejor seguridad de tipos
 
-## 📋 Requisitos Técnicos Cumplidos
-
-- ✅ Desarrollada con React Native utilizando Expo
-- ✅ Proyecto configurado en TypeScript (.tsx)
-- ✅ Uso obligatorio de Expo Router para navegación
-- ✅ Pantalla de Login con validación de contraseña
-- ✅ Navegación a vista con Tabs (Home y Perfil)
-- ✅ Implementación de manejo de estado con React Hooks
-- ✅ Código ordenado, legible y con buenas prácticas
-
 ## 🚀 Instalación y Ejecución
 
 ### 1. Instalar dependencias
@@ -73,10 +63,6 @@ app/
 context/
 └── AuthContext.tsx          # Context para gestión de autenticación
 ```
-
-## 🎥 Video de Demostración
-
-**[Ver video de demostración aquí](https://www.loom.com/share/tu-video-id)**
 
 
 

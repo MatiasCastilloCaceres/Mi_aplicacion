@@ -16,16 +16,16 @@ function RootLayoutContent() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        {!isAuthenticated ? (
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-        ) : (
-          <>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </>
-        )}
-      </Stack>
+      {!isAuthenticated ? (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="login" />
+        </Stack>
+      ) : (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        </Stack>
+      )}
       <StatusBar style="auto" />
     </ThemeProvider>
   );
