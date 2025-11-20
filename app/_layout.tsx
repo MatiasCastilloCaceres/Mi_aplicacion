@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { TaskProvider } from '@/context/TaskContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export const unstable_settings = {
@@ -16,17 +17,19 @@ function RootLayoutContent() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      {!isAuthenticated ? (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="login" />
-        </Stack>
-      ) : (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-      )}
-      <StatusBar style="auto" />
+      <TaskProvider>
+        {!isAuthenticated ? (
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="login" />
+          </Stack>
+        ) : (
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+        )}
+        <StatusBar style="auto" />
+      </TaskProvider>
     </ThemeProvider>
   );
 }
