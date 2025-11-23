@@ -111,7 +111,7 @@ export default function TasksScreen() {
           <Text style={styles.userEmail}>{email}</Text>
         </View>
         <View style={styles.taskCountBadge}>
-          <Text style={styles.taskCount}>{tasks.length}</Text>
+          <Text style={styles.taskCount}>{tasks.filter(t => t.userId === email).length}</Text>
         </View>
       </View>
 
@@ -130,7 +130,7 @@ export default function TasksScreen() {
       )}
 
       <FlatList
-        data={tasks}
+        data={tasks.filter(task => task.userId === email)}
         renderItem={renderTaskItem}
         keyExtractor={item => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
