@@ -47,7 +47,6 @@ npm start
 - Presiona `i` para iOS Simulator
 - Presiona `a` para Android Emulator
 - Presiona `w` para Web
-# Mi Aplicación - React Native (Expo) — Informe de cumplimiento
 
 Esta aplicación es un proyecto desarrollado con **React Native** y **Expo**, escrito en **TypeScript** y usando **Expo Router** para la navegación. El objetivo de este documento es resumir el cumplimiento de las especificaciones solicitadas y dar instrucciones rápidas para evaluar la aplicación.
 
@@ -59,15 +58,6 @@ Esta aplicación es un proyecto desarrollado con **React Native** y **Expo**, es
 - TODO List con foto + ubicación + persistencia por usuario: ✅
 
 ---
-
-## 1) Enlace a un video corto
-
-Coloca aquí un enlace a un video corto (Loom, YouTube, etc.) que muestre la app en funcionamiento. Reemplaza el placeholder por tu enlace real:
-
-- Video demostración (ejemplo): https://youtu.be/TU_VIDEO_EJEMPLO
-
-Instrucciones: sustituye el enlace anterior por el de tu grabación.
-
 ---
 
 ## 2) Tecnologías principales
@@ -121,9 +111,6 @@ Pasos rápidos para probar:
 - Las tareas se guardan en AsyncStorage (clave usada por `TaskContext.tsx`). Esto garantiza que las tareas permanezcan aunque cierres la app y no haya conexión.
 - Las fotos se guardan en el sistema de archivos del dispositivo usando `expo-file-system` (o a través de `expo-image-picker` que devuelve URIs locales). En `TaskForm.tsx` se guarda la URI en la tarea y la app muestra la imagen con `Image`.
 
-Notas técnicas:
-- Paquete AsyncStorage: `@react-native-async-storage/async-storage` (debe estar instalado en el proyecto).
-- Para producción se recomienda migrar las imágenes a almacenamiento dedicado o subir a un backend si necesita sincronización entre dispositivos.
 
 ---
 
@@ -165,15 +152,6 @@ npm install
 npm start
 # en la terminal de Expo: presiona 'a' para Android o 'i' para iOS, o usa Expo Go
 ```
-
----
-
-Si quieres, puedo:
-- Insertar el enlace real del video (si me lo proporcionas).
-- Añadir instrucciones de build (`eas build`) para generar APK/IPA.
-- Revisar `TaskContext.tsx` y `TaskForm.tsx` y confirmar unidades específicas si quieres una verificación más exhaustiva.
-
----
 
 Última actualización: 23 de noviembre de 2025
 
