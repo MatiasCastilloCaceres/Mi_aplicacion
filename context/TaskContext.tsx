@@ -201,78 +201,57 @@ export const TaskProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const syncTasks = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      console.log('Iniciando sincronización con API...');
 
       // Intentar obtener tareas del API para sincronizar
-      try {
-        const response = await fetch(`${API_BASE_URL}/todos?_limit=10`);
-        if (response.ok) {
-          const data = await response.json();
-          // Validar datos
-          const validTasks: Task[] = data
-            .filter((t: any) => t.id && t.title)
-            .map((t: any, index: number) => ({
-              id: `api-${t.id}-${Date.now()}-${index}`,
-              title: t.title || 'Sin título',
-              description: '',
-              completed: t.completed || false,
-              createdAt: new Date().toISOString(),
-              userId: t.userId?.toString() || '1',
-              synced: true,
-            }));
-
-          // Mezclar con tareas locales (no reemplazar)
-          setTasks((prevTasks) => {
-            // Solo añadir tareas si no existen IDs similares
-            const existingApiIds = new Set(prevTasks.filter(t => t.id.startsWith('api-')).map(t => t.id.split('-')[1]));
-            const newTasks = validTasks.filter(t => !existingApiIds.has(t.id.split('-')[1]));
-            const merged = [...prevTasks, ...newTasks];
-            
-            saveLocalTasksOnly(merged).catch(err => console.error(err));
-            return merged;
-          });
-        }
-      } catch (apiErr) {
-        console.log('No se puede sincronizar con API');
+      const response = await fetch(`${API_BASE_URL}/todos?_limit=10`);
+      
+      if (!response.ok) {
+        throw new Error(`Error de API: ${response.status}`);
       }
 
-      // Enviar tareas no sincronizadas (no-blocking)
-      setTimeout(async () => {
-        setTasks((currentTasks) => {
-          const unsyncedTasks = currentTasks.filter(t => !t.synced && !t.id.startsWith('api-'));
-          
-          // Sincronizar cada una de forma no-blocking
-          unsyncedTasks.forEach(async (task) => {
-            try {
-              const response = await fetch(`${API_BASE_URL}/todos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  title: task.title,
-                  completed: task.completed,
-                  userId: task.userId,
-                }),
-              });
+      const data = await response.json();
+      console.log('Tareas descargadas de API:', data.length);
 
-              if (response.ok) {
-                task.synced = true;
-                setTasks((latestTasks) => {
-                  saveLocalTasksOnly(latestTasks).catch(err => console.error(err));
-                  return latestTasks;
-                });
-              }
-            } catch (err) {
-              console.error(`Error sincronizando tarea ${task.id}`);
-            }
-          });
+      if (!Array.isArray(data)) {
+        throw new Error('Respuesta de API inválida');
+      }
 
-          return currentTasks;
-        });
-      }, 0);
+      // Validar y convertir datos
+      const validTasks: Task[] = data
+        .filter((t: any) => t.id && t.title)
+        .map((t: any, index: number) => ({
+          id: `api-${t.id}`,
+          title: t.title || 'Sin título',
+          description: '',
+          completed: t.completed || false,
+          createdAt: new Date().toISOString(),
+          userId: t.userId?.toString() || 'usuario@example.com',
+          synced: true,
+        }));
 
+      console.log('Tareas válidas:', validTasks.length);
+
+      // Mezclar con tareas locales
+      const currentTasks = tasks || [];
+      const existingApiIds = new Set(currentTasks.filter(t => t.id.startsWith('api-')).map(t => t.id));
+      const newTasks = validTasks.filter(t => !existingApiIds.has(t.id));
+      
+      console.log('Tareas nuevas a agregar:', newTasks.length);
+
+      const merged = [...currentTasks, ...newTasks];
+      
+      await saveLocalTasksOnly(merged);
+      setTasks(merged);
+      
       setError(null);
-    } catch (err) {
-      setError('Error en sincronización');
-      console.error(err);
+      console.log('Sincronización completada exitosamente');
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Error en sincronización';
+      setError(errorMsg);
+      console.error('Error en sincTasks:', err);
     } finally {
       setLoading(false);
     }
