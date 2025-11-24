@@ -228,7 +228,7 @@ export const TaskProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           description: '',
           completed: t.completed || false,
           createdAt: new Date().toISOString(),
-          userId: t.userId?.toString() || 'usuario@example.com',
+          userId: 'usuario@example.com', // Asignar al usuario actual para que vea las tareas de la API
           synced: true,
         }));
 
@@ -308,6 +308,11 @@ export const TaskProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       try {
         // Cargar tareas locales sin limpiar
         await loadAndSetTasks();
+        
+        // Luego sincronizar con API automáticamente
+        setTimeout(() => {
+          syncTasks();
+        }, 1000);
       } catch (err) {
         console.error('Error inicializando tareas:', err);
       }

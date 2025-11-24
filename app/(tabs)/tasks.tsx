@@ -21,8 +21,13 @@ export default function TasksScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    // Cargar tareas locales al montar
-    getTasks();
+    // Cargar tareas locales y luego sincronizar con API
+    const loadTasks = async () => {
+      await getTasks();
+      // Sincronizar con API después de 500ms
+      setTimeout(() => syncTasks(), 500);
+    };
+    loadTasks();
   }, []);
 
   const onRefresh = async () => {
