@@ -21,8 +21,8 @@ export default function TasksScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    // Solo cargar tareas locales al montar
-    // No llamar getTasks() aquí para evitar reloads
+    // Cargar tareas locales al montar
+    getTasks();
   }, []);
 
   const onRefresh = async () => {

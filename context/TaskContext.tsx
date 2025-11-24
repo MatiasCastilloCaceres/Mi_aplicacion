@@ -282,9 +282,16 @@ export const TaskProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const importTasksFromAPI = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/todos?_limit=5`);
+      setError(null);
+      
+      const response = await fetch(`${API_BASE_URL}/todos?_limit=5`, {
+        timeout: 10000, // timeout de 10 segundos
+      });
 
-      if (!response.ok) throw new Error('Error importando tareas');
+      if (!response.ok) {
+        setError('Error al conectar con la API');
+        throw new Error(`Error importando tareas: ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -320,8 +327,7 @@ export const TaskProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   useEffect(() => {
     const initializeTasks = async () => {
       try {
-        // Limpiar tareas antiguas para evitar IDs duplicados
-        await AsyncStorage.removeItem(STORAGE_KEY);
+        // Cargar tareas locales sin limpiar
         await loadAndSetTasks();
       } catch (err) {
         console.error('Error inicializando tareas:', err);
