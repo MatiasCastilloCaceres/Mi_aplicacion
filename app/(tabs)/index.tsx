@@ -1,14 +1,24 @@
-import { useAuth } from '@/context/AuthContext';
-import { StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '@/src/context/AuthContext';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  const { email } = useAuth();
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace('/login');
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>¡Bienvenido!</Text>
       <Text style={styles.subtitle}>Has iniciado sesión correctamente</Text>
-      <Text style={styles.email}>{email}</Text>
+      <Text style={styles.email}>{user?.email || 'Usuario'}</Text>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -35,5 +45,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '500',
+    marginBottom: 30,
+  },
+  logoutButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

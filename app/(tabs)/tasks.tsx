@@ -1,89 +1,185 @@
-import { TaskForm } from '@/components/TaskForm';
-import { useAuth } from '@/context/AuthContext';
-import { useTask } from '@/context/TaskContext';
+import { taskService } from '@/src/api/api';
+import { useAuth } from '@/src/context/AuthContext';
+import { CreateTaskRequest, Task } from '@/src/types';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function TasksScreen() {
-  const { tasks, getTasks, syncTasks, importTasksFromAPI, deleteTask, updateTask, loading, error } = useTask();
-  const { email } = useAuth();
-  const [formVisible, setFormVisible] = useState(false);
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [operatingTaskId, setOperatingTaskId] = useState<string | null>(null);
 
+  /**
+   * GET: Cargar tareas desde el backend
+   * Nota: NO se almacenan en AsyncStorage, solo en estado local
+   */
+  const loadTasks = async () => {
+    try {
+      setError(null);
+      console.log('[TASKS] Cargando tareas del servidor...');
+      const data = await taskService.getTasks();
+      setTasks(data);
+      console.log(`[TASKS] ${data.length} tareas cargadas`);
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Error al cargar tareas';
+      setError(errorMsg);
+      console.error('[TASKS] Error al cargar:', errorMsg);
+      Alert.alert('Error', errorMsg);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Cargar tareas al montar el componente
   useEffect(() => {
-    // Cargar tareas locales y luego sincronizar con API
-    const loadTasks = async () => {
-      await getTasks();
-      // Sincronizar con API después de 500ms
-      setTimeout(() => syncTasks(), 500);
-    };
     loadTasks();
   }, []);
 
+  /**
+   * Refresh: Recargar tareas manualmente
+   */
   const onRefresh = async () => {
     setRefreshing(true);
-    await syncTasks();
-    await getTasks();
-    setRefreshing(false);
+    await loadTasks();
   };
 
-  const handleToggleTask = async (taskId: string, completed: boolean) => {
-    await updateTask(taskId, { completed: !completed });
+  /**
+   * PATCH: Marcar tarea como completada/no completada
+   */
+  const handleToggleTask = async (taskId: string, currentCompleted: boolean) => {
+    try {
+      setOperatingTaskId(taskId);
+      console.log(`[TASKS] Actualizando tarea ${taskId}`);
+      
+      const updatedTask = await taskService.updateTask(taskId, {
+        completed: !currentCompleted,
+      });
+
+      // Actualizar estado local con la respuesta del servidor
+      setTasks((prevTasks) =>
+        prevTasks.map((t) =>
+          t.id === taskId ? { ...t, completed: updatedTask.completed } : t
+        )
+      );
+      
+      console.log(`[TASKS] Tarea ${taskId} actualizada`);
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Error al actualizar tarea';
+      console.error('[TASKS] Error:', errorMsg);
+      Alert.alert('Error', errorMsg);
+      // No actualizamos el estado local para mantener consistencia
+    } finally {
+      setOperatingTaskId(null);
+    }
   };
 
+  /**
+   * DELETE: Eliminar tarea con confirmación
+   */
   const handleDeleteTask = (taskId: string) => {
-    Alert.alert('Eliminar', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        onPress: () => deleteTask(taskId),
-        style: 'destructive',
-      },
-    ]);
+    Alert.alert(
+      'Eliminar tarea',
+      '¿Estás seguro de que deseas eliminar esta tarea?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          onPress: async () => {
+            try {
+              setOperatingTaskId(taskId);
+              console.log(`[TASKS] Eliminando tarea ${taskId}`);
+              
+              await taskService.deleteTask(taskId);
+
+              // Actualizar estado local
+              setTasks((prevTasks) => prevTasks.filter((t) => t.id !== taskId));
+              console.log(`[TASKS] Tarea ${taskId} eliminada`);
+            } catch (err: any) {
+              const errorMsg = err?.message || 'Error al eliminar tarea';
+              console.error('[TASKS] Error al eliminar:', errorMsg);
+              Alert.alert('Error', errorMsg);
+            } finally {
+              setOperatingTaskId(null);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
-  const handleImportTasks = () => {
-    Alert.alert('Importar tareas', 'Importar tareas de la API externa?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Importar',
-        onPress: importTasksFromAPI,
-      },
-    ]);
+  /**
+   * POST: Crear nueva tarea
+   * Actualmente deshabilitado - integración con TaskForm pendiente
+   */
+  const handleCreateTask = async (newTask: CreateTaskRequest) => {
+    try {
+      setOperatingTaskId('creating');
+      console.log('[TASKS] Creando nueva tarea:', newTask.title);
+      
+      const createdTask = await taskService.createTask(newTask);
+
+      // Agregar a la lista local
+      setTasks((prevTasks) => [...prevTasks, createdTask]);
+      console.log('[TASKS] Tarea creada:', createdTask.id);
+      Alert.alert('Éxito', 'Tarea creada correctamente');
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Error al crear tarea';
+      console.error('[TASKS] Error al crear:', errorMsg);
+      Alert.alert('Error', errorMsg);
+    } finally {
+      setOperatingTaskId(null);
+    }
   };
 
-  const renderTaskItem = ({ item }: { item: any }) => (
+  /**
+   * Renderizar cada tarea
+   */
+  const renderTaskItem = ({ item }: { item: Task }) => (
     <View style={styles.taskCard}>
       <View style={styles.taskHeader}>
         <TouchableOpacity
           style={[styles.checkbox, item.completed && styles.checkboxChecked]}
           onPress={() => handleToggleTask(item.id, item.completed)}
+          disabled={operatingTaskId === item.id}
         >
-          {item.completed && <Text style={styles.checkmark}>✓</Text>}
+          {operatingTaskId === item.id && (
+            <ActivityIndicator size="small" color="#fff" />
+          )}
+          {!operatingTaskId && item.completed && (
+            <Text style={styles.checkmark}>✓</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.taskContent}>
-          <Text style={[styles.taskTitle, item.completed && styles.completedText]}>
+          <Text
+            style={[
+              styles.taskTitle,
+              item.completed && styles.completedText,
+            ]}
+          >
             {item.title}
           </Text>
-          {item.description && (
-            <Text style={styles.taskDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
-          )}
         </View>
 
-        <TouchableOpacity onPress={() => handleDeleteTask(item.id)}>
+        <TouchableOpacity
+          onPress={() => handleDeleteTask(item.id)}
+          disabled={operatingTaskId === item.id}
+        >
           <Text style={styles.deleteButton}>🗑️</Text>
         </TouchableOpacity>
       </View>
@@ -91,19 +187,18 @@ export default function TasksScreen() {
       <View style={styles.taskMetadata}>
         {item.photoUri && (
           <View style={styles.photoPreview}>
-            <Image source={{ uri: item.photoUri }} style={styles.photo} />
+            <Image
+              source={{ uri: item.photoUri }}
+              style={styles.photo}
+            />
           </View>
         )}
 
-        {item.latitude && item.longitude && (
+        {item.location?.latitude && item.location?.longitude && (
           <Text style={styles.locationText}>
-            📍 {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+            📍 {item.location.latitude.toFixed(4)}, {item.location.longitude.toFixed(4)}
           </Text>
         )}
-
-        <View style={styles.syncStatus}>
-          <Text style={styles.syncText}>{item.synced ? '✓ Sincronizado' : '⏳ Pendiente'}</Text>
-        </View>
       </View>
     </View>
   );
@@ -112,11 +207,11 @@ export default function TasksScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>📋 Mis Tareas</Text>
-          <Text style={styles.userEmail}>{email}</Text>
+          <Text style={styles.headerTitle}>📋 Tareas</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
         </View>
         <View style={styles.taskCountBadge}>
-          <Text style={styles.taskCount}>{tasks.filter(t => t.userId === email).length}</Text>
+          <Text style={styles.taskCount}>{tasks.length}</Text>
         </View>
       </View>
 
@@ -124,49 +219,61 @@ export default function TasksScreen() {
         <View style={styles.errorBanner}>
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => setError(null)}>
+            <Text style={styles.errorClose}>✕</Text>
+          </TouchableOpacity>
         </View>
       )}
 
-      {loading && (
+      {loading && !refreshing && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Sincronizando...</Text>
+          <Text style={styles.loadingText}>Cargando tareas...</Text>
         </View>
       )}
 
-      <FlatList
-        data={tasks.filter(task => task.userId === email)}
-        renderItem={renderTaskItem}
-        keyExtractor={item => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>📋</Text>
-            <Text style={styles.emptyTitle}>Sin tareas</Text>
-            <Text style={styles.emptySubtext}>Crea una nueva o importa desde API</Text>
-          </View>
-        }
-        contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 12 }}
-      />
+      {!loading && (
+        <FlatList
+          data={tasks}
+          renderItem={renderTaskItem}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>📋</Text>
+              <Text style={styles.emptyTitle}>Sin tareas</Text>
+              <Text style={styles.emptySubtext}>
+                Crea una nueva tarea para empezar
+              </Text>
+            </View>
+          }
+          contentContainerStyle={{
+            paddingHorizontal: 8,
+            paddingVertical: 12,
+          }}
+        />
+      )}
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={[styles.fab, styles.importButton]} onPress={handleImportTasks}>
-          <Text style={styles.fabIcon}>📥</Text>
-          <Text style={styles.fabText}>Importar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.fab, styles.syncButton]} onPress={syncTasks}>
-          <Text style={styles.fabIcon}>🔄</Text>
-          <Text style={styles.fabText}>Sincronizar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.fab, styles.addButton]} onPress={() => setFormVisible(true)}>
+        <TouchableOpacity
+          style={[styles.fab, styles.addButton]}
+          onPress={() =>
+            Alert.alert(
+              'Crear Tarea',
+              'Integración con formulario en desarrollo',
+              [{ text: 'OK' }]
+            )
+          }
+        >
           <Text style={styles.fabIcon}>➕</Text>
           <Text style={styles.fabText}>Agregar</Text>
         </TouchableOpacity>
       </View>
-
-      <TaskForm visible={formVisible} onClose={() => setFormVisible(false)} userId={email || '1'} />
     </View>
   );
 }
@@ -174,60 +281,64 @@ export default function TasksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    padding: 16,
     backgroundColor: '#007AFF',
-    paddingTop: 16,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 4,
   },
   userEmail: {
     fontSize: 12,
-    color: '#e0e0ff',
-    marginTop: 4,
+    color: '#fff',
+    opacity: 0.8,
   },
   taskCountBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: '#FF3B30',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   taskCount: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   errorBanner: {
-    backgroundColor: '#ffebee',
-    padding: 12,
-    marginHorizontal: 12,
-    marginTop: 8,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#d32f2f',
+    backgroundColor: '#FFE5E5',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    borderBottomColor: '#FF3B30',
+    borderBottomWidth: 1,
   },
   errorIcon: {
     fontSize: 18,
     marginRight: 8,
   },
   errorText: {
-    color: '#d32f2f',
+    color: '#FF3B30',
     fontSize: 14,
-    fontWeight: '600',
+    flex: 1,
+  },
+  errorClose: {
+    fontSize: 18,
+    color: '#FF3B30',
+    paddingLeft: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -236,118 +347,91 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
+    fontSize: 16,
     color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
   },
   taskCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    marginVertical: 6,
+    borderRadius: 8,
     marginHorizontal: 8,
-    padding: 14,
-    borderLeftWidth: 5,
-    borderLeftColor: '#007AFF',
+    marginVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   taskHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   checkbox: {
-    width: 28,
-    height: 28,
-    borderWidth: 2.5,
-    borderColor: '#ddd',
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 1,
-    backgroundColor: '#fff',
   },
   checkboxChecked: {
-    backgroundColor: '#34C759',
-    borderColor: '#34C759',
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   checkmark: {
-    color: 'white',
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
-    fontSize: 16,
   },
   taskContent: {
     flex: 1,
   },
   taskTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
   },
   completedText: {
-    color: '#999',
     textDecorationLine: 'line-through',
+    color: '#999',
   },
   taskDescription: {
     fontSize: 13,
     color: '#666',
-    marginTop: 4,
   },
   deleteButton: {
     fontSize: 20,
-    padding: 4,
+    paddingHorizontal: 8,
   },
   taskMetadata: {
     marginTop: 12,
-    gap: 10,
+    paddingTop: 12,
+    borderTopColor: '#eee',
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 10,
   },
   photoPreview: {
-    width: '100%',
-    height: 140,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    marginBottom: 8,
   },
   photo: {
     width: '100%',
-    height: '100%',
+    height: 150,
+    borderRadius: 6,
   },
   locationText: {
     fontSize: 12,
-    color: '#444',
-    backgroundColor: '#f5f5f5',
-    padding: 8,
-    borderRadius: 6,
-    fontWeight: '500',
-    borderLeftWidth: 3,
-    borderLeftColor: '#FF9500',
-  },
-  syncStatus: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingTop: 6,
-  },
-  syncText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-    backgroundColor: '#f9f9f9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    color: '#007AFF',
+    marginVertical: 4,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
+    paddingVertical: 40,
   },
   emptyText: {
     fontSize: 48,
@@ -355,51 +439,42 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#333',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
     color: '#999',
-    fontWeight: '500',
   },
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingBottom: 20,
-    paddingTop: 14,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    gap: 10,
-    paddingHorizontal: 10,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   fab: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
     flexDirection: 'row',
-  },
-  fabIcon: {
-    fontSize: 18,
-    marginRight: 6,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
   },
   addButton: {
     backgroundColor: '#007AFF',
   },
-  syncButton: {
-    backgroundColor: '#34C759',
-  },
-  importButton: {
-    backgroundColor: '#FF9500',
+  fabIcon: {
+    fontSize: 20,
+    marginRight: 6,
   },
   fabText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

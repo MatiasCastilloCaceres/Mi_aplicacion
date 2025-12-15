@@ -1,13 +1,13 @@
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
-  const { email, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     router.replace('/login');
   };
 
@@ -24,7 +24,7 @@ export default function ProfileScreen() {
             <Text style={styles.infoIcon}>📧</Text>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{email}</Text>
+              <Text style={styles.infoValue}>{user?.email || 'No disponible'}</Text>
             </View>
           </View>
 
